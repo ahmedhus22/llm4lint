@@ -30,13 +30,13 @@ def lint_dataset(linter: Callable[[Path], str], dataset_path: Path = Path("../st
 
 def linter_pylint_raw(file: Path) -> str:
     """performs linting on file using pylint, returns output as json"""
-    out = subprocess.run(['pylint', '--persistent=n', '--output-format=json', file],
+    out = subprocess.run(['pylint', '--persistent=n', '--disable=import-error', '--output-format=json', file],
                          capture_output=True).stdout
     return out.decode(encoding=sys.stdout.encoding)
 
 def linter_pylint(file: Path) -> str:
     """performs linting on file using pylint, returns source code issues messages"""
-    raw_out = subprocess.run(['pylint', '--persistent=n', '--output-format=json', file],
+    raw_out = subprocess.run(['pylint', '--persistent=n', '--disable=import-error', '--output-format=json', file],
                          capture_output=True).stdout
     raw_out = raw_out.decode(encoding=sys.stdout.encoding)
     json_objs = json.loads(raw_out)
