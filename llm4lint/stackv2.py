@@ -14,6 +14,8 @@ datasets.config.DOWNLOADED_DATASETS_PATH = Path(DOWNLOAD_PATH)
 
 def download_contents(files):
     for file in files:
+        if file["language"] != "Python":
+            continue
         s3_url = f"s3://softwareheritage/content/{file['blob_id']}"
         with open(s3_url, "rb", compression=".gz", transport_params={"client": s3}) as fin:
             file["content"] = fin.read().decode(file["src_encoding"])
@@ -28,9 +30,9 @@ no_python_files = 0
 for row in ds:
     repo_name = row["repo_name"]
     for file in row["files"]:
-        blob_id = file["blob_id"]
-        content = file["content"]
         if file["language"] == "Python":
+            blob_id = file["blob_id"]
+            content = file["content"]
             Path(DOWNLOAD_ROOT, repo_name).mkdir(exist_ok=True, parents=True)
             data_path = Path(DOWNLOAD_ROOT, repo_name, blob_id + ".py")
             with open(data_path, "w", encoding="utf-8") as f:
