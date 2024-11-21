@@ -5,7 +5,12 @@ import subprocess
 import json
 import pandas as pd
 
-def lint_dataset(linter: Callable[[Path], str], dataset_path: Path = Path("../stack-v2-smol"), save_path: Path = Path("../datasets/dataset_pylint.csv")) -> pd.DataFrame:
+def lint_dataset(
+        linter: Callable[[Path], str],
+        dataset_path: Path = Path("../stack-v2-smol"),
+        save_path: Path = Path("../datasets"),
+        save_raw: bool = False
+    ) -> pd.DataFrame:
     """performs linting on the entire dataset,
     and saves the output in a directory with same filenames of source codes
     """
@@ -25,7 +30,10 @@ def lint_dataset(linter: Callable[[Path], str], dataset_path: Path = Path("../st
                     f.write(label)
     df = pd.DataFrame(dataset)
     save_path.parent.mkdir(exist_ok=True, parents=True)
-    df.to_csv(save_path, index=False, encoding="utf-8")
+    df.to_csv(save_path / Path("dataset_pylint.csv"), index=False, encoding="utf-8")
+    if save_raw:
+        df["code"].to_csv(save_path / Path("code_raw.csv"), index=False, header=False, encoding="utf-8")
+        df["label"].to_csv(save_path / Path("label_raw.csv"), index=False, header=False, encoding="utf-8")
     return df
 
 def linter_pylint_raw(file: Path) -> str:
