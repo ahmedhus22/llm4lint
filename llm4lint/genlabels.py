@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import json
 import pandas as pd
+from tqdm import tqdm
 
 def lint_dataset(
         linter: Callable[[Path], str],
@@ -15,16 +16,20 @@ def lint_dataset(
     and saves the output in a directory with same filenames of source codes
     """
     dataset = {"code":[], "label":[]}
-    for repo_owner in dataset_path.iterdir():
-        project = next(repo_owner.iterdir())
-        #files = project.glob("*.py")
-        files = []
-        for file in project.iterdir():
-            files.append(file)
-            with open(file, "r", encoding="utf-8") as code:
-                dataset["code"].append(code.read())
-        labels = linter(list(files))
-        dataset["label"] += labels
+    no_of_repos = len(list(dataset_path.iterdir()))
+    with tqdm(total=no_of_repos) as pbar:
+        for repo_owner in dataset_path.iterdir():
+            project = next(repo_owner.iterdir())
+            #files = project.glob("*.py")
+            files = []
+            for file in project.iterdir():
+                files.append(file)
+                with open(file, "r", encoding="utf-8") as code:
+                    dataset["code"].append(code.read())
+            labels = linter(list(files))
+            dataset["label"] += labels
+            pbar.update(1)
+            pbar.set_description(str(project))
     df = pd.DataFrame(dataset)
     save_path.parent.mkdir(exist_ok=True, parents=True)
     df.to_csv(save_path / Path("dataset_pylint.csv"), index=False, encoding="utf-8")
