@@ -25,8 +25,6 @@ def lint_dataset(
                 dataset["code"].append(code.read())
         labels = linter(list(files))
         dataset["label"] += labels
-        print(dataset["code"])
-        print(dataset["label"])
     df = pd.DataFrame(dataset)
     save_path.parent.mkdir(exist_ok=True, parents=True)
     df.to_csv(save_path / Path("dataset_pylint.csv"), index=False, encoding="utf-8")
@@ -42,7 +40,7 @@ def linter_pylint_raw(file: Path) -> str:
     return out.decode(encoding=sys.stdout.encoding)
 
 def linter_pylint(file: Union[Path, List]) -> str:
-    """performs linting on file using pylint, returns source code issues messages"""
+    """performs linting on a file using pylint, returns source code issues messages"""
     raw_out = subprocess.run(['pylint', '--persistent=n', '--disable=import-error', '--output-format=json', file],
                          capture_output=True).stdout
     raw_out = raw_out.decode(encoding=sys.stdout.encoding)
@@ -59,17 +57,15 @@ def linter_pylint_project(files: List) -> List:
                          capture_output=True).stdout
     raw_out = raw_out.decode(encoding=sys.stdout.encoding)
     json_objs = json.loads(raw_out)
-    messages = []
-    module_messages = ""
-    prev_module = ""
+    messages = {}
     for obj in json_objs:
         message = str(obj["line"]) + " " + obj["message"] + "\n"
-        module_messages += message
-        if obj["module"] != prev_module:
-            messages.append(module_messages)
-            module_messages = ""
-        prev_module = obj["module"]
-    messages.append(module_messages) # adding the last module_messages
-    return messages
+        if not obj["module"] in messages.keys():
+            messages[obj["module"]] = ""
+        messages[obj["module"]] += (message)
+    ordered_messages = []
+    for file in files:
+        ordered_messages.append(messages[str(file.stem)])
+    return ordered_messages
 
 lint_dataset(linter=linter_pylint_project)
