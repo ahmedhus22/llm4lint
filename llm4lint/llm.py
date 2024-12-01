@@ -122,8 +122,9 @@ class LLM:
             report_to = "none", # Use this for WandB etc
             ),
         )
+        trainer_stats = trainer.train()
         self.save(save_path)
-        return trainer.train()
+        return trainer_stats
 
     def inference(self, input, text_stream:bool = True):
         FastLanguageModel.for_inference(self.model) # Enable native 2x faster inference
@@ -145,6 +146,7 @@ class LLM:
             return self.tokenizer.batch_decode(outputs)
     
     def save(self, path: Path) -> None:
+        """ONLY Saves the LORA Adapters for now"""
         self.model.save_pretrained(path) # Local saving
         self.tokenizer.save_pretrained(path)
     
