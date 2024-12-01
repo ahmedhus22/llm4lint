@@ -163,9 +163,11 @@ cython_debug/
 
 # Vscode
 .vscode/
+
 # Dataset
 stack-v2-smol/
 datasets/
 
-# Pytorch checkpoints
+# Model saves
 *.pt
+models/
