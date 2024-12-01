@@ -1,4 +1,5 @@
 """abstractions for fine-tuning pre-trained LLMs"""
+from typing import Optional
 from pathlib import Path
 from unsloth import (
     FastLanguageModel,
@@ -7,14 +8,17 @@ from unsloth import (
 import torch
 from datasets import load_dataset, Dataset
 from trl import SFTTrainer
-from transformers import TrainingArguments
+from transformers import (
+    TrainingArguments,
+    TextStreamer
+)
 
 class LLM:
     def __init__(
             self, 
             model_name: str,
             type: str = "base",
-            path: Path = Path("../models/"),
+            model_path: Optional[Path] = Path("../models/"),
             max_seq_length: int = 2048,
             HF_TOKEN: str = None
         ) -> None:
@@ -34,37 +38,42 @@ class LLM:
         ### Response:
         {}"""
 
-        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            # Can select any from the below:
-            # "unsloth/Qwen2.5-0.5B", "unsloth/Qwen2.5-1.5B", "unsloth/Qwen2.5-3B"
-            # "unsloth/Qwen2.5-14B",  "unsloth/Qwen2.5-32B",  "unsloth/Qwen2.5-72B",
-            # And also all Instruct versions and Math. Coding verisons!
-            model_name = self.model_name,
-            max_seq_length = self.max_seq_length,
-            dtype = self.dtype,
-            load_in_4bit = self.load_in_4bit,
-            # token = "hf_...", # use one if using gated models like meta-llama/Llama-2-7b-hf
-        )
+        if (not model_path is None) and model_path.exists():
+            self.model, self.tokenizer = self.load(model_path)
+        else:
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                # Can select any from the below:
+                # "unsloth/Qwen2.5-0.5B", "unsloth/Qwen2.5-1.5B", "unsloth/Qwen2.5-3B"
+                # "unsloth/Qwen2.5-14B",  "unsloth/Qwen2.5-32B",  "unsloth/Qwen2.5-72B",
+                # And also all Instruct versions and Math. Coding verisons!
+                model_name = self.model_name,
+                max_seq_length = self.max_seq_length,
+                dtype = self.dtype,
+                load_in_4bit = self.load_in_4bit,
+                # token = "hf_...", # use one if using gated models like meta-llama/Llama-2-7b-hf
+            )
 
-        self.model = FastLanguageModel.get_peft_model(
-            self.model,
-            r = 16, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-            target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                            "gate_proj", "up_proj", "down_proj",],
-            lora_alpha = 16,
-            lora_dropout = 0, # Supports any, but = 0 is optimized
-            bias = "none",    # Supports any, but = "none" is optimized
-            # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-            use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-            random_state = 3407,
-            use_rslora = False,  # We support rank stabilized LoRA
-            loftq_config = None, # And LoftQ
-        )
+            self.model = FastLanguageModel.get_peft_model(
+                self.model,
+                r = 16, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+                target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                                "gate_proj", "up_proj", "down_proj",],
+                lora_alpha = 16,
+                lora_dropout = 0, # Supports any, but = 0 is optimized
+                bias = "none",    # Supports any, but = "none" is optimized
+                # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
+                use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+                random_state = 3407,
+                use_rslora = False,  # We support rank stabilized LoRA
+                loftq_config = None, # And LoftQ
+            )
+        
+        self.dataset = None # load it only if train method is called
 
     def _formatting_prompts_func(self, examples):
         """formats batch of examples with columns 'code' and 'lable' into alpaca_promt format"""
         EOS_TOKEN = self.tokenizer.eos_token # Must add EOS_TOKEN
-        instructions = ["Perform linting on the given code. Try to find all the source code issues, style issues, type errors, and fatal errors."]
+        instructions = "Perform linting on the given code. Try to find all the source code issues, style issues, type errors, and fatal errors."
         inputs       = examples["code"]
         outputs      = examples["label"]
         texts = []
@@ -79,7 +88,13 @@ class LLM:
         dataset = dataset.map(self._formatting_prompts_func, batched=True)
         return dataset
     
-    def train(self, train_dataset: Path):
+    def train(
+            self, 
+            train_dataset: Path,
+            save_path: Path = Path("../models/lora_model")
+        ):
+        """fine-tune model 'self.model_name' or (continue training) loaded model with given dataset, 
+        saves model and returns training stats"""
         self.dataset = self.preprocess(train_dataset)
         trainer = SFTTrainer(
         model = self.model,
@@ -107,12 +122,38 @@ class LLM:
             report_to = "none", # Use this for WandB etc
             ),
         )
+        self.save(save_path)
+        return trainer.train()
 
-    def inference(self, input):
-        raise NotImplementedError
+    def inference(self, input, text_stream:bool = True):
+        FastLanguageModel.for_inference(self.model) # Enable native 2x faster inference
+        inputs = self.tokenizer(
+        [
+            self.alpaca_prompt.format(
+                "Perform linting on the given code. Try to find all the source code issues, style issues, type errors, and fatal errors.", # instruction
+                input, # input
+                "", # output - leave this blank for generation!
+            )
+        ], return_tensors = "pt").to("cuda")
+
+        if text_stream:
+            text_streamer = TextStreamer(self.tokenizer)
+            _ = self.model.generate(**inputs, streamer = text_streamer, max_new_tokens = 128)
+            yield _
+        else:
+            outputs = self.model.generate(**inputs, max_new_tokens = 64, use_cache = True)
+            return self.tokenizer.batch_decode(outputs)
     
-    def save(self, path: Path):
-        raise NotImplementedError
+    def save(self, path: Path) -> None:
+        self.model.save_pretrained(path) # Local saving
+        self.tokenizer.save_pretrained(path)
     
     def load(self, path: Path):
-        raise NotImplementedError
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name = "lora_model", # FIX THIS LATER!!!!, adjust it to actual path
+            max_seq_length = self.max_seq_length,
+            dtype = self.dtype,
+            load_in_4bit = self.load_in_4bit,
+        )
+        #FastLanguageModel.for_inference(model) # Enable native 2x faster inference
+        return model, tokenizer
