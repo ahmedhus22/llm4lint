@@ -18,7 +18,7 @@ class LLM:
             self, 
             model_name: str,
             type: str = "base",
-            model_path: Optional[Path] = Path("../models/"),
+            model_path: Optional[Path] = Path("../models/lora_model"),
             max_seq_length: int = 2048,
             HF_TOKEN: str = None
         ) -> None:
@@ -26,7 +26,7 @@ class LLM:
         self.max_seq_length = max_seq_length
         self.dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
         self.load_in_4bit = True # Use 4bit quantization to reduce memory usage. Can be False.
-
+        self.model_path = model_path
         self.alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
         ### Instruction:
@@ -38,8 +38,8 @@ class LLM:
         ### Response:
         {}"""
 
-        if (not model_path is None) and model_path.exists():
-            self.model, self.tokenizer = self.load(model_path)
+        if (not self.model_path is None) and self.model_path.exists():
+            self.model, self.tokenizer = self.load(self.model_path)
         else:
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
                 # Can select any from the below:
@@ -84,7 +84,7 @@ class LLM:
         return { "text" : texts, }
 
     def preprocess(self, dataset_path: Path) -> Dataset:
-        dataset = load_dataset("csv", data_files=dataset_path)["train"]
+        dataset = load_dataset("csv", data_files=str(dataset_path))["train"]
         dataset = dataset.map(self._formatting_prompts_func, batched=True)
         return dataset
     
@@ -149,8 +149,9 @@ class LLM:
         self.tokenizer.save_pretrained(path)
     
     def load(self, path: Path):
+        self.model_path = path
         model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name = "lora_model", # FIX THIS LATER!!!!, adjust it to actual path
+            model_name = str(self.model_path),
             max_seq_length = self.max_seq_length,
             dtype = self.dtype,
             load_in_4bit = self.load_in_4bit,
