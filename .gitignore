@@ -167,6 +167,7 @@ cython_debug/
 # Dataset
 stack-v2-smol/
 datasets/
+dataset_cache/
 
 # Model saves
 *.pt

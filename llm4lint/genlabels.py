@@ -1,5 +1,6 @@
 from typing import Callable, Union, List
 import sys
+import os
 from pathlib import Path
 import subprocess
 import json
@@ -17,8 +18,17 @@ def lint_dataset(
     """
     dataset = {"code":[], "label":[]}
     no_of_repos = len(list(dataset_path.iterdir()))
+    CACHE_PATH = Path("dataset_cache", "lint_cache.json")
     with tqdm(total=no_of_repos) as pbar:
-        for repo_owner in dataset_path.iterdir():
+        if CACHE_PATH.exists():
+            with open(CACHE_PATH, "r", encoding="utf-8") as cache_file: 
+                repos_linted = json.load(cache_file)["repos_linted"]
+            pbar.update(repos_linted)
+        else:
+            repos_linted = 0
+        repo_owners = sorted(dataset_path.iterdir(), key=os.path.getmtime)
+        for idx, repo_owner in enumerate(repo_owners):
+            if idx < repos_linted: continue
             project = next(repo_owner.iterdir())
             #files = project.glob("*.py")
             files = []
@@ -30,12 +40,14 @@ def lint_dataset(
             dataset["label"] += labels
             pbar.update(1)
             pbar.set_description(str(project))
+    with open(CACHE_PATH, "w") as cache_file:
+        json.dump({"repos_linted": no_of_repos}, cache_file)
     df = pd.DataFrame(dataset)
     save_path.parent.mkdir(exist_ok=True, parents=True)
-    df.to_csv(save_path / Path("dataset_pylint.csv"), index=False, encoding="utf-8")
+    df.to_csv(save_path / Path("dataset_pylint.csv"), index=False, encoding="utf-8", mode="a")
     if save_raw:
-        df["code"].to_csv(save_path / Path("code_raw.csv"), index=False, header=False, encoding="utf-8")
-        df["label"].to_csv(save_path / Path("label_raw.csv"), index=False, header=False, encoding="utf-8")
+        df["code"].to_csv(save_path / Path("code_raw.csv"), index=False, header=False, encoding="utf-8", mode="a")
+        df["label"].to_csv(save_path / Path("label_raw.csv"), index=False, header=False, encoding="utf-8", mode="a")
     return df
 
 def linter_pylint_raw(file: Path) -> str:
@@ -65,7 +77,7 @@ def linter_pylint_project(files: List) -> List:
     messages = {}
     for obj in json_objs:
         message = str(obj["line"]) + " - " + obj["type"] + ": " + obj["message"] + "\n" #" (" + obj["symbol"].replace("-", " ") + ")" + "\n"
-        print(message)
+        #print(message)
         if not obj["module"] in messages.keys():
             messages[obj["module"]] = ""
         messages[obj["module"]] += (message)
