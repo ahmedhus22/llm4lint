@@ -139,11 +139,10 @@ class LLM:
 
         if text_stream:
             text_streamer = TextStreamer(self.tokenizer)
-            _ = self.model.generate(**inputs, streamer = text_streamer, max_new_tokens = 128)
-            yield _
+            _ = self.model.generate(**inputs, streamer = text_streamer, max_new_tokens = 128) # TODO: THIS IS WRONG, TextStreamer STREAMS DIRECTLY TO STDOUT!!
         else:
             outputs = self.model.generate(**inputs, max_new_tokens = 64, use_cache = True)
-            return self.tokenizer.batch_decode(outputs)
+            return self.tokenizer.batch_decode(outputs)[0]
     
     def save(self, path: Path) -> None:
         """ONLY Saves the LORA Adapters for now"""
