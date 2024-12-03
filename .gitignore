@@ -168,6 +168,7 @@ cython_debug/
 stack-v2-smol/
 datasets/
 dataset_cache/
+*.lock
 
 # Model saves
 *.pt
