@@ -83,7 +83,10 @@ def linter_pylint_project(files: List) -> List:
         messages[obj["module"]] += (message)
     ordered_messages = []
     for file in files:
-        ordered_messages.append(messages[str(file.stem)])
+        try:
+            ordered_messages.append(messages[str(file.stem)])
+        except KeyError:
+            ordered_messages.append("Clean Code: No Issues Detected\n")
     return ordered_messages
 
 lint_dataset(linter=linter_pylint_project)
