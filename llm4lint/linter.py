@@ -13,9 +13,11 @@ class Linter:
     def get_lints(self, files: List[Path]) -> Dict[str, str]:
         """Prompt the LLM to perform linting"""
         for file in files:
-            with open(file, "r", encoding="utf-8") as f:
-                code = f.read()
-                self.lints[str(file)] = self.llm.inference(code, text_stream=False)
+            with open(file, "r", encoding="utf-8") as src_file:
+                code = ""
+                for index, line in enumerate(src_file):
+                    code += str(index + 1) + "   " + line
+            self.lints[str(file)] = self.llm.inference(code, text_stream=False)
         return self.lints
     
     def init_interactive(self, files: List[Path]) -> None:

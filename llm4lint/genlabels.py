@@ -34,8 +34,11 @@ def lint_dataset(
             files = []
             for file in project.iterdir():
                 files.append(file)
-                with open(file, "r", encoding="utf-8") as code:
-                    dataset["code"].append(code.read())
+                with open(file, "r", encoding="utf-8") as src_file:
+                    code = ""
+                    for index, line in enumerate(src_file):
+                        code += str(index + 1) + "   " + line
+                    dataset["code"].append(code)
             labels = linter(list(files))
             dataset["label"] += labels
             pbar.update(1)
