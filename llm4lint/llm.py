@@ -5,6 +5,7 @@ from unsloth import (
     FastLanguageModel,
     is_bfloat16_supported
 )
+from unsloth.chat_templates import get_chat_template
 import torch
 from datasets import load_dataset, Dataset
 from trl import SFTTrainer
@@ -17,7 +18,6 @@ class LLM:
     def __init__(
             self, 
             model_name: str,
-            type: str = "base",
             model_path: Optional[Path] = Path("../models/lora_model"),
             max_seq_length: int = 2048,
             HF_TOKEN: str = None
@@ -126,7 +126,7 @@ class LLM:
         self.save(save_path)
         return trainer_stats
 
-    def inference(self, input, text_stream:bool = True):
+    def inference(self, input: str, text_stream:bool = True):
         FastLanguageModel.for_inference(self.model) # Enable native 2x faster inference
         inputs = self.tokenizer(
         [
@@ -159,3 +159,41 @@ class LLM:
         )
         #FastLanguageModel.for_inference(model) # Enable native 2x faster inference
         return model, tokenizer
+
+
+class InstructLLM(LLM):
+    def __init__(self, 
+        model_name: str,
+        model_path: Path | None = Path("../models/lora_model"),
+        max_seq_length: int = 2048,
+        HF_TOKEN: str = None
+    ) -> None:
+        super().__init__(model_name, model_path, max_seq_length, HF_TOKEN)
+        if (self.model_path is None) or not self.model_path.exists():
+            self.tokenizer = get_chat_template(
+                self.tokenizer,
+                chat_template = "llama-3", # Supports zephyr, chatml, mistral, llama, alpaca, vicuna, vicuna_old, unsloth
+                mapping = {"role" : "from", "content" : "value", "user" : "human", "assistant" : "gpt"}, # ShareGPT style
+            )
+
+    def _formatting_prompts_chat(self, examples):
+        convos = examples["conversations"]
+        texts = [self.tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
+        return { "text" : texts, }
+
+    def preprocess(self, dataset_path: Path) -> Dataset:
+        raise NotImplementedError
+    
+    def inference(self, input: str, text_stream: bool = True) -> str:
+        FastLanguageModel.for_inference(self.model) # Enable native 2x faster inference
+        messages = [
+            {"from": "human", "value": input},
+        ]
+        inputs = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize = True,
+            add_generation_prompt = True, # Must add for generation
+            return_tensors = "pt",
+        ).to("cuda")
+        outputs = self.model.generate(input_ids = inputs, max_new_tokens = 64, use_cache = True)
+        return self.tokenizer.batch_decode(outputs)[0]
