@@ -27,6 +27,7 @@ class LLM:
         self.dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
         self.load_in_4bit = True # Use 4bit quantization to reduce memory usage. Can be False.
         self.model_path = model_path
+        self.HF_TOKEN = HF_TOKEN
         self.alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
         ### Instruction:
@@ -144,10 +145,17 @@ class LLM:
             outputs = self.model.generate(**inputs, max_new_tokens = 64, use_cache = True)
             return self.tokenizer.batch_decode(outputs)[0]
     
-    def save(self, path: Path) -> None:
-        """ONLY Saves the LORA Adapters for now"""
-        self.model.save_pretrained(path) # Local saving
-        self.tokenizer.save_pretrained(path)
+    def save(self, path: Path, format: str = "lora") -> None:
+        """saves the model in formats: 'lora', 'q4_gguf' or '16bit_gguf'"""
+        if format == "lora":
+            self.model.save_pretrained(path)
+            self.tokenizer.save_pretrained(path)
+        elif format == "q4_gguf":
+            self.model.save_pretrained_gguf("model", self.tokenizer, quantization_method = "q4_k_m")
+            # if not self.HF_TOKEN is None:
+            #     self.model.push_to_hub_gguf("hf/model", self.tokenizer, quantization_method = "q4_k_m", token = self.HF_TOKEN)
+        elif format == "16bit_gguf":
+            self.model.save_pretrained_gguf("model", self.tokenizer, quantization_method = "f16")
     
     def load(self, path: Path):
         self.model_path = path
