@@ -4,14 +4,14 @@ from typing import Set
 import ast
 import argparse
 from pathlib import Path
-from augmentation import FindNames
+import augmentation
 
 def get_names(file: Path) -> Set[str]:
     """finds all name ids of code in given file"""
     with open(file, "r", encoding="utf-8") as f:
         code = f.read()
     tree = ast.parse(code)
-    name_finder = FindNames()
+    name_finder = augmentation.FindNames()
     name_finder.visit(tree)
     return list(name_finder.node_ids)
 
