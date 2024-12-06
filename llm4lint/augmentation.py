@@ -10,15 +10,15 @@ for i in l:
 
 class FindNames(ast.NodeVisitor):
     """finds all unique name ids: 
-    call FindNamesobj.visit(tree) to store names in FindNamesobj.var_nodes atrr"""
+    call FindNamesobj.visit(tree) to store names in FindNamesobj.node_ids:set atrr"""
     def __init__(self) -> None:
         super().__init__()
-        self.var_nodes = set()
+        self.node_ids = set()
 
     def visit_Name(self, node):
         #print(node.id)
-        self.var_nodes.add(node.id)
-        return self.var_nodes
+        self.node_ids.add(node.id)
+        return self.node_ids
 
 
 class NameNodeTransformer(ast.NodeTransformer):
