@@ -3,6 +3,9 @@ import ast
 from typing import List, Set
 from copy import copy
 from random import shuffle
+from pathlib import Path
+
+from datasets import load_dataset
 
 example_code = """
 l = [1,2,3,4]
@@ -78,6 +81,26 @@ def augment_code_names(src_code: str) -> str:
     augmented_code = ast.unparse(tree)
     return augmented_code
 
+def augment_data(examples):
+    """augments data for input column in a batch"""
+    inputs = []
+    outputs = []
+    AUG_POSITIONS = 70
+    NO_POSITIONAL_CHANGE = 30
+    for code, label in zip(examples["input"], examples["output"]):
+        augmented_sequences = []
+        for i in range(NO_POSITIONAL_CHANGE):
+            augmented_sequences.append(augment_code_names(code))
+        inputs += [code] + augmented_sequences
+        outputs += [label] + [label] * NO_POSITIONAL_CHANGE
+    return {"input": inputs, "output": outputs}
+
+def augment_dataset(examples: Path):
+    """create new data points for given examples"""
+    # original_data: pd.DataFrame = pd.read_csv(examples)[0]
+    dataset = load_dataset("csv", data_files=str(examples))["train"]
+    aug_dataset = dataset.map(augment_data, batched=True, remove_columns=dataset.column_names, batch_size=2)
+    print((aug_dataset[:2]))
 
 # tree = ast.parse(example_code)
 # name_l = ast.Name(id='l')
@@ -85,4 +108,5 @@ def augment_code_names(src_code: str) -> str:
 # new_tree = ast.fix_missing_locations(NameNodeTransformer(old_name=name_l, new_name=new_name).visit(tree))
 # print(ast.unparse(new_tree))
 
-print(augment_code_names(example_code))
+# print(augment_code_names(example_code))
+augment_dataset(Path("examples.csv"))
