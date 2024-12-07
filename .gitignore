@@ -169,7 +169,10 @@ stack-v2-smol/
 datasets/
 dataset_cache/
 *.lock
+examples.csv
 
 # Model saves
 *.pt
 models/
+model/
+outputs/
