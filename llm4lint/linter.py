@@ -1,4 +1,6 @@
-"""Classes to use LLMs to perform Linting"""
+"""classes to use LLMs to perform Linting,
+THIS MODULE ONLY WORKS ON LORA ADAPTERS, THIS IS FOR DEBUGGING ONLY.
+GGUF FORMAT IS USED FOR DEPLOYMENT"""
 from typing import List, Dict
 #from abc import ABC, abstractmethod
 from argparse import ArgumentParser
