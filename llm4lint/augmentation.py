@@ -6,7 +6,7 @@ from random import shuffle
 from pathlib import Path
 from random import randrange
 
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 
 example_code = """
 l = [1,2,3,4]
@@ -69,6 +69,7 @@ class NameRandomizer():
 
 def augment_code_names(src_code: str) -> str:
     """Returns augmented src code by transforming variable names"""
+    if src_code is None: return src_code
     tree = ast.parse(src_code)
     # find all name node ids
     var_name_finder = FindNames()
@@ -105,13 +106,13 @@ def augment_data(examples):
         outputs += [label] + [label] * (NO_POSITIONAL_CHANGE + AUG_POSITIONS)
     return {"input": inputs, "output": outputs}
 
-def augment_dataset(examples: Path):
+def augment_dataset(examples: Path, save_path: Path, save_format: str="csv") -> Dataset:
     """create new data points for given examples"""
     # original_data: pd.DataFrame = pd.read_csv(examples)[0]
     dataset = load_dataset("csv", data_files=str(examples))["train"]
     aug_dataset = dataset.map(augment_data, batched=True, remove_columns=dataset.column_names, batch_size=2)
-    print((aug_dataset[:10]))
-
-
-# print(augment_code_names(example_code))
-augment_dataset(Path("examples.csv"))
+    if save_format == "csv":
+        aug_dataset.to_csv(save_path)
+    else:
+        aug_dataset.save_to_disk(save_path)
+    return aug_dataset
