@@ -74,9 +74,9 @@ class LLM:
     def _formatting_prompts_func(self, examples):
         """formats batch of examples with columns 'code' and 'lable' into alpaca_promt format"""
         EOS_TOKEN = self.tokenizer.eos_token # Must add EOS_TOKEN
-        instructions = "Perform linting on the given code. Try to find all the source code issues, style issues, type errors, and fatal errors."
-        inputs       = examples["code"]
-        outputs      = examples["label"]
+        instructions = "Perform linting on the given code. Specify output in format: <line_number> - <type>: <issue>."
+        inputs       = examples["input"]
+        outputs      = examples["output"]
         texts = []
         for input, output in zip(inputs, outputs):
             # Must add EOS_TOKEN, otherwise your generation will go on forever!
