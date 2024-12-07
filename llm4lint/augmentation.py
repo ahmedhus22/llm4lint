@@ -4,6 +4,7 @@ from typing import List, Set
 from copy import copy
 from random import shuffle
 from pathlib import Path
+from random import randrange
 
 from datasets import load_dataset
 
@@ -85,14 +86,23 @@ def augment_data(examples):
     """augments data for input column in a batch"""
     inputs = []
     outputs = []
-    AUG_POSITIONS = 70
+    # disable positional augmentations for now (need to find a dataset)
+    AUG_POSITIONS = 0
     NO_POSITIONAL_CHANGE = 30
+    DATASET_SIZE = 300
+    #dataset = load_dataset("iamtarun/python_code_instructions_18k_alpaca", split="train").take(DATASET_SIZE)
     for code, label in zip(examples["input"], examples["output"]):
         augmented_sequences = []
-        for i in range(NO_POSITIONAL_CHANGE):
+        for _ in range(NO_POSITIONAL_CHANGE):
             augmented_sequences.append(augment_code_names(code))
+        # for i in range(AUG_POSITIONS):
+        #     aug_code = augment_code_names(code)
+        #     aug_prefix = dataset[randrange(0, DATASET_SIZE)]["output"]
+        #     aug_postfix = dataset[randrange(0, DATASET_SIZE)]["output"]
+        #     aug_code = aug_prefix + aug_code + aug_postfix
+        #     augmented_sequences.append(aug_code)
         inputs += [code] + augmented_sequences
-        outputs += [label] + [label] * NO_POSITIONAL_CHANGE
+        outputs += [label] + [label] * (NO_POSITIONAL_CHANGE + AUG_POSITIONS)
     return {"input": inputs, "output": outputs}
 
 def augment_dataset(examples: Path):
@@ -100,13 +110,8 @@ def augment_dataset(examples: Path):
     # original_data: pd.DataFrame = pd.read_csv(examples)[0]
     dataset = load_dataset("csv", data_files=str(examples))["train"]
     aug_dataset = dataset.map(augment_data, batched=True, remove_columns=dataset.column_names, batch_size=2)
-    print((aug_dataset[:2]))
+    print((aug_dataset[:10]))
 
-# tree = ast.parse(example_code)
-# name_l = ast.Name(id='l')
-# new_name = ast.Name(id='test')
-# new_tree = ast.fix_missing_locations(NameNodeTransformer(old_name=name_l, new_name=new_name).visit(tree))
-# print(ast.unparse(new_tree))
 
 # print(augment_code_names(example_code))
 augment_dataset(Path("examples.csv"))
