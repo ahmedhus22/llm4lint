@@ -14,7 +14,7 @@ for i in l:
     l.append(1)
 """
 
-names = ['to_do', 'find', 'data_for', 'variable_names']
+names = ['to_do', 'find', 'data_for', 'variable_names', 'msg', 'y', 'iter', 'user_input', 'a', 'lru_cache', 'Foo', 'value', 'data', 'ABC', 'contents', 'reduce', 'x', 'foo', 'i', 'BaseClass', 'myint', 'range', 'b', 'c', 'self', 'print_values_but_five', 'fh', 'input', 'print', 'bar', 'MSG', 'numbers', 'file_path']
 
 class FindNames(ast.NodeVisitor):
     """finds all unique name ids: 
@@ -92,7 +92,7 @@ def augment_data(examples):
     NO_POSITIONAL_CHANGE = 30
     DATASET_SIZE = 300
     #dataset = load_dataset("iamtarun/python_code_instructions_18k_alpaca", split="train").take(DATASET_SIZE)
-    for code, label in zip(examples["input"], examples["output"]):
+    for code, label, lineno in zip(examples["input"], examples["output"], examples["lineno"]):
         augmented_sequences = []
         for _ in range(NO_POSITIONAL_CHANGE):
             augmented_sequences.append(augment_code_names(code))
@@ -103,16 +103,23 @@ def augment_data(examples):
         #     aug_code = aug_prefix + aug_code + aug_postfix
         #     augmented_sequences.append(aug_code)
         inputs += [code] + augmented_sequences
-        outputs += [label] + [label] * (NO_POSITIONAL_CHANGE + AUG_POSITIONS)
+        outputs += [str(lineno)+" - "+label] + [str(lineno)+" - "+label] * (NO_POSITIONAL_CHANGE + AUG_POSITIONS)
     return {"input": inputs, "output": outputs}
 
 def augment_dataset(examples: Path, save_path: Path, save_format: str="csv") -> Dataset:
     """create new data points for given examples"""
     # original_data: pd.DataFrame = pd.read_csv(examples)[0]
     dataset = load_dataset("csv", data_files=str(examples))["train"]
-    aug_dataset = dataset.map(augment_data, batched=True, remove_columns=dataset.column_names, batch_size=2)
+    aug_dataset = dataset.map(augment_data, batched=True, remove_columns=dataset.column_names, batch_size=100)
     if save_format == "csv":
         aug_dataset.to_csv(save_path)
     else:
         aug_dataset.save_to_disk(save_path)
     return aug_dataset
+
+
+# augment_dataset(
+#     Path("../datasets/examples.csv"),
+#     save_path=Path("../datasets/examples_aug_test.csv"),
+#     save_format="csv"
+# )
