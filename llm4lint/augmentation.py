@@ -89,6 +89,13 @@ def augment_code_names(src_code: str) -> str:
     augmented_code = ast.unparse(tree)
     return augmented_code
 
+def _addcodelines(code: str) -> str:
+    code_with_lnos = ""
+    code_lines = code.split("\n")
+    for index, line in enumerate(code_lines):
+        code_with_lnos += str(index+1) + "   " + line + "\n"
+    return code_with_lnos
+
 def augment_data(examples):
     """augments data for input column in a batch"""
     inputs = []
@@ -99,18 +106,19 @@ def augment_data(examples):
     for code, label, lineno in zip(examples["input"], examples["output"], examples["lineno"]):
         augmented_sequences = []
         for _ in range(NO_POSITIONAL_CHANGE):
-            augmented_sequences.append(augment_code_names(code))
+            augmented_sequences.append(_addcodelines(augment_code_names(code)))
         # linenos need to be updated as well
         positional_labels = []
         for i in range(AUG_POSITIONS):
             aug_code: str = augment_code_names(code)
-            pos_dataset.shuffle(keep_in_memory=True)
+            pos_dataset.shuffle(seed=i*i, keep_in_memory=True)
             aug_prefix: str = pos_dataset[i]["input"]
             aug_postfix: str = pos_dataset[i+1]["input"]
             no_prefix_lines = aug_prefix.count("\n")
             # additional 1 is added to line number because of new line before code
             positional_labels.append(str(no_prefix_lines+lineno+1)+" - "+label)
             aug_code = aug_prefix + "\n" + aug_code + "\n" + aug_postfix
+            aug_code = _addcodelines(aug_code)
             augmented_sequences.append(aug_code)
         inputs += [code] + augmented_sequences
         outputs += [str(lineno)+" - "+label] + [str(lineno)+" - "+label] * (NO_POSITIONAL_CHANGE)  + positional_labels
