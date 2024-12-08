@@ -109,8 +109,8 @@ class LLM:
             per_device_train_batch_size = 2,
             gradient_accumulation_steps = 4,
             warmup_steps = 5,
-            # num_train_epochs = 1, # Set this for 1 full training run.
-            max_steps = 60,
+            num_train_epochs = 1, # Set this for 1 full training run.
+            #max_steps = 60,
             learning_rate = 2e-4,
             fp16 = not is_bfloat16_supported(),
             bf16 = is_bfloat16_supported(),
@@ -146,16 +146,20 @@ class LLM:
             return self.tokenizer.batch_decode(outputs)[0]
     
     def save(self, path: Path, format: str = "lora") -> None:
-        """saves the model in formats: 'lora', 'q4_gguf' or '16bit_gguf'"""
+        """saves the model in formats: 'lora', '16bit_merged' 'q4_gguf' or '16bit_gguf'"""
         if format == "lora":
             self.model.save_pretrained(path)
             self.tokenizer.save_pretrained(path)
         elif format == "q4_gguf":
-            self.model.save_pretrained_gguf("model", self.tokenizer, quantization_method = "q4_k_m")
+            self.model.save_pretrained_gguf(path, self.tokenizer, quantization_method = "q4_k_m")
             # if not self.HF_TOKEN is None:
             #     self.model.push_to_hub_gguf("hf/model", self.tokenizer, quantization_method = "q4_k_m", token = self.HF_TOKEN)
+        elif format == "16bit_merged":
+            # gguf DOES NOT WORK use 16bit_merged then manually convert to gguf
+            # based on wiki: https://github.com/unslothai/unsloth/wiki#manually-saving-to-gguf (use cmake instead)
+            self.model.save_pretrained_merged(path, self.tokenizer, save_method = "merged_16bit")
         elif format == "16bit_gguf":
-            self.model.save_pretrained_gguf("model", self.tokenizer, quantization_method = "f16")
+            self.model.save_pretrained_gguf(path, self.tokenizer, quantization_method = "f16")
     
     def load(self, path: Path):
         self.model_path = path
