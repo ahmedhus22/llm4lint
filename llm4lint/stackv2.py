@@ -24,14 +24,17 @@ def download_contents(files, repo_name):
             continue
         s3_url = f"s3://softwareheritage/content/{file['blob_id']}"
         with open(s3_url, "rb", compression=".gz", transport_params={"client": s3}) as fin:
-            file["content"] = fin.read().decode(file["src_encoding"])
+            file_content: str = fin.read().decode(file["src_encoding"])
+        no_of_lines = file_content.count("\n")
+        if no_of_lines < 200:
+            file["content"] = file_content
     return {"files": files}
 
 ds = load_dataset("bigcode/the-stack-v2-train-smol-ids", split="train", streaming=True, token=os.environ["HF_TOKEN"], cache_dir=DOWNLOAD_PATH)
 ds = ds.map(lambda row: download_contents(row["files"], row["repo_name"]))
 
 DOWNLOAD_ROOT = "../stack-v2-smol"
-DATASET_SIZE = int(1e+2)
+DATASET_SIZE = int(4e+2)
 no_python_files = 0
 with tqdm(total=DATASET_SIZE) as pbar:
     for row in ds:
@@ -41,6 +44,10 @@ with tqdm(total=DATASET_SIZE) as pbar:
         #     continue
         for file in row["files"]:
             if Path(DOWNLOAD_ROOT, repo_name, file["blob_id"] + ".py").exists():
+                continue
+            try:
+                content = file["content"]
+            except KeyError:
                 continue
             if file["language"] == "Python":
                 blob_id = file["blob_id"]
