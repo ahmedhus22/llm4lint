@@ -73,7 +73,7 @@ def linter_pylint(file: Union[Path, List]) -> str:
 
 def linter_pylint_project(files: List) -> List:
     """performs linting on all files using pylint, returns dictionary of source code issues messages"""
-    raw_out = subprocess.run(['pylint', '--persistent=n', '--disable=import-error,C0103', '--output-format=json'] + files,
+    raw_out = subprocess.run(['pylint', '--persistent=n', '--disable=import-error,C0103,R0801', '--output-format=json'] + files,
                          capture_output=True).stdout
     raw_out = raw_out.decode(encoding=sys.stdout.encoding)
     json_objs = json.loads(raw_out)
