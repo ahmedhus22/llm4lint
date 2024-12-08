@@ -16,6 +16,7 @@ for i in l:
     l.append(1)
 """
 
+pos_dataset = load_dataset("csv", data_files=str(Path("../datasets/clean_code_aug.csv")))["train"]
 
 class FindNames(ast.NodeVisitor):
     """finds all unique name ids: 
@@ -93,22 +94,26 @@ def augment_data(examples):
     inputs = []
     outputs = []
     # disable positional augmentations for now (need to find a dataset)
-    AUG_POSITIONS = 0
+    AUG_POSITIONS = 15
     NO_POSITIONAL_CHANGE = 30
-    DATASET_SIZE = 300
-    #dataset = load_dataset("iamtarun/python_code_instructions_18k_alpaca", split="train").take(DATASET_SIZE)
     for code, label, lineno in zip(examples["input"], examples["output"], examples["lineno"]):
         augmented_sequences = []
         for _ in range(NO_POSITIONAL_CHANGE):
             augmented_sequences.append(augment_code_names(code))
-        # for i in range(AUG_POSITIONS):
-        #     aug_code = augment_code_names(code)
-        #     aug_prefix = dataset[randrange(0, DATASET_SIZE)]["output"]
-        #     aug_postfix = dataset[randrange(0, DATASET_SIZE)]["output"]
-        #     aug_code = aug_prefix + aug_code + aug_postfix
-        #     augmented_sequences.append(aug_code)
+        # linenos need to be updated as well
+        positional_labels = []
+        for i in range(AUG_POSITIONS):
+            aug_code: str = augment_code_names(code)
+            pos_dataset.shuffle(keep_in_memory=True)
+            aug_prefix: str = pos_dataset[i]["input"]
+            aug_postfix: str = pos_dataset[i+1]["input"]
+            no_prefix_lines = aug_prefix.count("\n")
+            # additional 1 is added to line number because of new line before code
+            positional_labels.append(str(no_prefix_lines+lineno+1)+" - "+label)
+            aug_code = aug_prefix + "\n" + aug_code + "\n" + aug_postfix
+            augmented_sequences.append(aug_code)
         inputs += [code] + augmented_sequences
-        outputs += [str(lineno)+" - "+label] + [str(lineno)+" - "+label] * (NO_POSITIONAL_CHANGE + AUG_POSITIONS)
+        outputs += [str(lineno)+" - "+label] + [str(lineno)+" - "+label] * (NO_POSITIONAL_CHANGE)  + positional_labels
     return {"input": inputs, "output": outputs}
 
 def augment_dataset(examples: Path, save_path: Path, save_format: str="csv") -> Dataset:
@@ -123,8 +128,12 @@ def augment_dataset(examples: Path, save_path: Path, save_format: str="csv") -> 
     return aug_dataset
 
 
-# augment_dataset(
-#     Path("../datasets/examples.csv"),
-#     save_path=Path("../datasets/examples_aug_test.csv"),
-#     save_format="csv"
-# )
+def main():
+    augment_dataset(
+        Path("../datasets/examples.csv"),
+        save_path=Path("../datasets/examples_aug.csv"),
+        save_format="csv"
+    )
+
+if __name__=="__main__":
+    main()
