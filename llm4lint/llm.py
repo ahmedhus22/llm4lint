@@ -3,7 +3,10 @@ from typing import Optional
 from pathlib import Path
 from unsloth import (
     FastLanguageModel,
-    is_bfloat16_supported
+    is_bfloat16_supported,
+    to_sharegpt,
+    standardize_sharegpt,
+    apply_chat_template
 )
 from unsloth.chat_templates import get_chat_template
 import torch
@@ -30,14 +33,14 @@ class LLM:
         self.HF_TOKEN = HF_TOKEN
         self.alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
-        ### Instruction:
-        {}
+### Instruction:
+{}
 
-        ### Input:
-        {}
+### Input:
+{}
 
-        ### Response:
-        {}"""
+### Response:
+{}"""
 
         if (not self.model_path is None) and self.model_path.exists():
             self.model, self.tokenizer = self.load(self.model_path)
@@ -72,7 +75,7 @@ class LLM:
         self.dataset = None # load it only if train method is called
 
     def _formatting_prompts_func(self, examples):
-        """formats batch of examples with columns 'code' and 'lable' into alpaca_promt format"""
+        """formats batch of examples with columns 'input' and 'output' into alpaca_promt format"""
         EOS_TOKEN = self.tokenizer.eos_token # Must add EOS_TOKEN
         instructions = "Perform linting on the given code. Specify output in format: <line_number> - <type>: <issue>."
         inputs       = examples["input"]
@@ -86,7 +89,27 @@ class LLM:
 
     def preprocess(self, dataset_path: Path) -> Dataset:
         dataset = load_dataset("csv", data_files=str(dataset_path))["train"]
-        dataset = dataset.map(self._formatting_prompts_func, batched=True)
+        dataset = to_sharegpt(
+            dataset,
+            merged_prompt = "Perform linting on the given code. Specify output in format: <line_number> - <type>: <issue>.\n [[\nYour input is:\n{input}]]",
+            output_column_name = "output",
+            conversation_extension = 1, # Select more to handle longer conversations
+        )
+        dataset = standardize_sharegpt(dataset)
+        chat_template = """Below are some instructions that describe some tasks. Write responses that appropriately complete each request.
+
+### Instruction:
+Perform linting on the given code. Specify output in format: <line_number> - <type>: <issue>.
+{INPUT}
+
+### Response:
+{OUTPUT}"""
+        dataset = apply_chat_template(
+            dataset,
+            tokenizer = self.tokenizer,
+            chat_template = chat_template,
+            # default_system_message = "You are a helpful assistant", << [OPTIONAL]
+        )
         return dataset
     
     def train(
