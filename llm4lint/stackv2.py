@@ -6,6 +6,7 @@ from botocore.config import Config
 from smart_open import open
 from datasets import load_dataset
 import datasets.config
+from tqdm import tqdm
 
 
 s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
@@ -30,23 +31,25 @@ ds = load_dataset("bigcode/the-stack-v2-train-smol-ids", split="train", streamin
 ds = ds.map(lambda row: download_contents(row["files"], row["repo_name"]))
 
 DOWNLOAD_ROOT = "../stack-v2-smol"
-DATASET_SIZE = int(1e+3)
+DATASET_SIZE = int(1e+2)
 no_python_files = 0
-for row in ds:
-    repo_name = row["repo_name"]
-    # UNCOMMENT TO SKIP ENTIRE REPO
-    # if Path(DOWNLOAD_ROOT, repo_name).exists():
-    #     continue
-    for file in row["files"]:
-        if Path(DOWNLOAD_ROOT, repo_name, file["blob_id"] + ".py").exists():
-            continue
-        if file["language"] == "Python":
-            blob_id = file["blob_id"]
-            content = file["content"]
-            Path(DOWNLOAD_ROOT, repo_name).mkdir(exist_ok=True, parents=True)
-            data_path = Path(DOWNLOAD_ROOT, repo_name, blob_id + ".py")
-            with open(data_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            no_python_files += 1
-    if no_python_files == DATASET_SIZE:
-        break
+with tqdm(total=DATASET_SIZE) as pbar:
+    for row in ds:
+        repo_name = row["repo_name"]
+        # UNCOMMENT TO SKIP ENTIRE REPO
+        # if Path(DOWNLOAD_ROOT, repo_name).exists():
+        #     continue
+        for file in row["files"]:
+            if Path(DOWNLOAD_ROOT, repo_name, file["blob_id"] + ".py").exists():
+                continue
+            if file["language"] == "Python":
+                blob_id = file["blob_id"]
+                content = file["content"]
+                Path(DOWNLOAD_ROOT, repo_name).mkdir(exist_ok=True, parents=True)
+                data_path = Path(DOWNLOAD_ROOT, repo_name, blob_id + ".py")
+                with open(data_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                no_python_files += 1
+                pbar.update(1)
+        if no_python_files >= DATASET_SIZE:
+            break
