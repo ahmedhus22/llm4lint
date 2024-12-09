@@ -3,17 +3,23 @@ from typing import Iterator, List, Dict
 from pathlib import Path
 from ollama import chat, ChatResponse
 
-from augmentation import _addcodelines
 
 class App:
     def __init__(self, model: str) -> None:
         self.model:str = model
         self.lint_prompt = "Perform linting on the given code. Specify output in format: <line_number> - <type>: <issue>\n"
 
+    def _addcodelines(self, code: str) -> str:
+        code_with_lnos = ""
+        code_lines = code.split("\n")
+        for index, line in enumerate(code_lines):
+            code_with_lnos += str(index+1) + "   " + line + "\n"
+        return code_with_lnos
+
     def _getcode(self, path: Path) -> str:
         with open(path, "r", encoding="utf-8") as f:
             code: str = f.read()
-        code = _addcodelines(code)
+        code = self._addcodelines(code)
         return code
 
     def get_lints(self, file: Path) -> Iterator[ChatResponse]:
