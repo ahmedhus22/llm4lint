@@ -166,12 +166,14 @@ cython_debug/
 
 # Dataset
 stack-v2-smol/
-datasets/
+datasets/*
 dataset_cache/
 *.lock
 examples.csv
 stack-v2-smol_l/
 upload/
+!datasets/dataset_combined.csv
+!datasets/examples.csv
 
 # Model saves
 *.pt

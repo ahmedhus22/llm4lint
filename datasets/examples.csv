@@ -1,0 +1,109 @@
+input,output,lineno
+"l = [1,2,3,4]
+for i in l:
+    l.append(1)
+",infinite loop: iterable changed while iterating over it,3
+"numbers = [10, 20, 30]
+numbers[4]",error: index out of bound,2
+"x = 1
+y = None
+print(x)
+",warning: unused variable,2
+"from functools import lru_cache, reduce
+
+
+def foo(data):
+    return reduce(lambda x, y: x + y, data)
+
+
+print(foo([1, 2, 3, 4]))
+",warning: unused import,1
+"class Foo:
+    def __init__(self, numbers):
+        self.numbers = numbers
+
+
+foo = Foo([1, 2, 3])
+a, b, c = foo
+print(a, b, c)
+",error: unpacking non sequence,6
+"if input():
+    user_input = input()
+
+
+print(user_input)
+",error: used-before-assignment,5
+"def print_values_but_five(value):
+    if value:
+        continue
+    print(value)
+
+
+for i in range(10):
+    print_values_but_five(i)
+",error: not in loop,2
+"def get_item():
+    pass
+
+
+def get_item():
+    pass
+",warning: function-redefined,5
+"from abc import ABC, abstractmethod
+
+
+class BaseClass(ABC):
+    @abstractmethod
+    def get_something(self):
+        pass
+
+
+base = BaseClass()
+",error: Abstract-class-initiated,10
+"def foo():
+    return True
+    print('Inside a function.')
+",warning: unreachable-code,3
+"def foo():
+    # McCabe rating is 11 here (by default 10)
+    myint = 2
+    if myint == 5:
+        return myint
+    elif myint == 6:
+        return myint
+    elif myint == 7:
+        return myint
+    elif myint == 8:
+        return myint
+    elif myint == 9:
+        return myint
+    elif myint == 10:
+        if myint == 8:
+            while True:
+                return True
+        elif myint == 8:
+            with myint:
+                return 8
+    else:
+        if myint == 2:
+            return myint
+        return myint
+    return myint
+",warning: function too complex,1
+"foo = lambda: min(1, 2)
+",warning: uncessary lambda,1
+"foo = {'key': 'value1', 'key': 'value2'}
+",error: duplicate-key,1
+"var = 1
+
+
+def foo():
+    global v
+    print(v)
+    v = 10
+    print(v)
+
+
+foo()
+print(var)
+",error: global-variable-undefined,5
