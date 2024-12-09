@@ -170,9 +170,13 @@ datasets/
 dataset_cache/
 *.lock
 examples.csv
+stack-v2-smol_l/
+upload/
 
 # Model saves
 *.pt
 models/
 model/
 outputs/
+merged_model/
+_unsloth_sentencepiece_temp/
