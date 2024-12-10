@@ -9,7 +9,7 @@ A Static Analysis Tool built by finetuning Qwen2.5 Coder using unsloth.
     - Augmentation of inputs: 
         - Variable names are replaced with different names to make sure model does not memorize the code.
         - Additional code is added before and after your input example. (outputs are also adjusted to account for lineno changes).
-- Dataset created using this script: [https://huggingface.co/datasets/ahmedhus22/python-static-analysis-linting]()
+- Dataset created using this script: https://huggingface.co/datasets/ahmedhus22/python-static-analysis-linting
 
 ## Usage:
 llm4lint.py [-h] [-i] filename
@@ -21,8 +21,8 @@ llm4lint.py [-h] [-i] filename
   - -h, --help           show this help message and exit
   - -i, --interactive    starts chat interface for interacting with model
 
-## Installation
-- Install ollama python library, In a virtual environment: [https://github.com/ollama/ollama-python/tree/main](Ollama-Python).
+## Installation (For Inference Only)
+- Install ollama python library, In a virtual environment: [Ollama-Python](https://github.com/ollama/ollama-python/tree/main).
 - Clone this repo.
 - Download the fine-tuned model from huggingface into `models/q4_gguf/`directory.
 - Change first line of Modelfile to `FROM <model_download_path>`
