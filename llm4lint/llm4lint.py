@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 from typing import Iterator, List, Dict
 from pathlib import Path
 from ollama import chat, ChatResponse
@@ -6,6 +7,7 @@ from ollama import chat, ChatResponse
 
 class App:
     def __init__(self, model: str) -> None:
+        #subprocess.Popen(["ollama", "serve"])
         self.model:str = model
         self.lint_prompt = "Perform linting on the given code. Specify output in format: <line_number> - <type>: <issue>\n"
 
