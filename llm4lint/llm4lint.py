@@ -3,17 +3,23 @@ from typing import Iterator, List, Dict
 from pathlib import Path
 from ollama import chat, ChatResponse
 
-from augmentation import _addcodelines
 
 class App:
     def __init__(self, model: str) -> None:
         self.model:str = model
         self.lint_prompt = "Perform linting on the given code. Specify output in format: <line_number> - <type>: <issue>\n"
 
+    def _addcodelines(self, code: str) -> str:
+        code_with_lnos = ""
+        code_lines = code.split("\n")
+        for index, line in enumerate(code_lines):
+            code_with_lnos += str(index+1) + "   " + line + "\n"
+        return code_with_lnos
+
     def _getcode(self, path: Path) -> str:
         with open(path, "r", encoding="utf-8") as f:
             code: str = f.read()
-        code = _addcodelines(code)
+        code = self._addcodelines(code)
         return code
 
     def get_lints(self, file: Path) -> Iterator[ChatResponse]:
@@ -60,10 +66,12 @@ class App:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="An LLM Linter that you can finetune with your own data"
+        description="A Local LLM Linter that you can finetune with your own data"
+        "(visit https://github.com/ahmedhus22/llm4lint to get train script)"
     )
     parser.add_argument("filename", help="Python Source File to lint")
-    parser.add_argument("--examples", default=None, help="csv file with linting examples: cols=input, output")
+    #REMOVE THIS FEATURE. Use train.py script for augmentation
+    #parser.add_argument("--examples", default=None, help="csv file with linting examples: cols=input, output")
     parser.add_argument("-i", "--interactive", action="store_true", help=App.init_shell.__doc__)
     args = parser.parse_args()
     cli_app = App("llm4lint7b")

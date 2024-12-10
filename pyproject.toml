@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm4lint"
+version = "0.0.1"
+authors = [
+  { name="Syed Ahmed Hussain", email="ahmedhus22@gmail.com" },
+]
+description = "A Linter that uses LLM to analyze code"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+  "ollama",
+]
+
+[project.scripts]
+llm4lint = "llm4lint.llm4lint:main"
+
+[project.urls]
+Homepage = "https://github.com/ahmedhus22/llm4lint"
+Issues = "https://github.com/ahmedhus22/llm4lint/issues"
