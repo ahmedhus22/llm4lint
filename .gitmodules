@@ -1,0 +1,3 @@
+[submodule "llm4lint-vsc-extension"]
+	path = llm4lint-vsc-extension
+	url = git@github.com:ahmedhus22/llm4lint-vsc-extension.git
