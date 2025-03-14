@@ -1,4 +1,5 @@
 import argparse
+import re
 from typing import Iterator, List, Dict
 from pathlib import Path
 from ollama import chat, ChatResponse
@@ -21,6 +22,18 @@ class App:
             code: str = f.read()
         code = self._addcodelines(code)
         return code
+
+    def _logcode(self, message: str, path: Path = Path("llm4lint_artifacts")) -> List[str]:
+        codeblock_regex = re.compile(r"```(?:\w+)?\n([\s\S]*?)\n```")
+        codeblocks = codeblock_regex.findall(message)
+        log=[]
+        for block in codeblocks:
+            log.append(block)
+            filename = Path("artifact_" + str(len(log)) + ".py")
+            path.mkdir(exist_ok=True)
+            with open(Path(path, filename), "w") as f:
+                f.write(block)
+        return log
 
     def get_lints(self, file: Path) -> Iterator[ChatResponse]:
         """returns predicted tokens as a stream(iterable),
@@ -60,7 +73,7 @@ class App:
             for chunk in stream:
                 assistant_message += chunk['message']['content']
                 print(chunk['message']['content'], end='', flush=True)
-            
+            self._logcode(assistant_message)
             messages.append({'role': 'assistant', 'content': assistant_message})
 
 

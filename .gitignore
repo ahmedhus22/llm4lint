@@ -181,3 +181,11 @@ model/
 outputs/
 merged_model/
 _unsloth_sentencepiece_temp/
+
+#llm4lint output logs
+llm4lint_artifacts/
+
+# UML Doc
+*.dot
+*.puml
+UML/
