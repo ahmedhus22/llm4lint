@@ -18,6 +18,7 @@ from transformers import (
 )
 
 class LLM:
+    """Finetunes Base Models, Use InstructLLM for Instruct Models"""
     def __init__(
             self, 
             model_name: str,
@@ -46,10 +47,6 @@ class LLM:
             self.model, self.tokenizer = self.load(self.model_path)
         else:
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-                # Can select any from the below:
-                # "unsloth/Qwen2.5-0.5B", "unsloth/Qwen2.5-1.5B", "unsloth/Qwen2.5-3B"
-                # "unsloth/Qwen2.5-14B",  "unsloth/Qwen2.5-32B",  "unsloth/Qwen2.5-72B",
-                # And also all Instruct versions and Math. Coding verisons!
                 model_name = self.model_name,
                 max_seq_length = self.max_seq_length,
                 dtype = self.dtype,
@@ -65,11 +62,10 @@ class LLM:
                 lora_alpha = 16,
                 lora_dropout = 0, # Supports any, but = 0 is optimized
                 bias = "none",    # Supports any, but = "none" is optimized
-                # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
                 use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
                 random_state = 3407,
-                use_rslora = False,  # We support rank stabilized LoRA
-                loftq_config = None, # And LoftQ
+                use_rslora = False,
+                loftq_config = None,
             )
         
         self.dataset = None # load it only if train method is called
@@ -156,7 +152,7 @@ Perform linting on the given code. Specify output in format: <line_number> - <ty
         [
             self.alpaca_prompt.format(
                 "Perform linting on the given code. Try to find all the source code issues, style issues, type errors, and fatal errors.", # instruction
-                input, # input
+                input,
                 "", # output - leave this blank for generation!
             )
         ], return_tensors = "pt").to("cuda")
@@ -175,10 +171,11 @@ Perform linting on the given code. Specify output in format: <line_number> - <ty
             self.tokenizer.save_pretrained(path)
         elif format == "q4_gguf":
             self.model.save_pretrained_gguf(path, self.tokenizer, quantization_method = "q4_k_m")
-            # if not self.HF_TOKEN is None:
+            # UNCOMMENT IF NEED TO PUSH TO HF
+            # if not self.HF_TOKEN is None: 
             #     self.model.push_to_hub_gguf("hf/model", self.tokenizer, quantization_method = "q4_k_m", token = self.HF_TOKEN)
         elif format == "16bit_merged":
-            # gguf DOES NOT WORK use 16bit_merged then manually convert to gguf
+            # In case conversion to GGUF fails refer to docs for manual conversion
             # based on wiki: https://github.com/unslothai/unsloth/wiki#manually-saving-to-gguf (use cmake instead)
             self.model.save_pretrained_merged(path, self.tokenizer, save_method = "merged_16bit")
         elif format == "16bit_gguf":
@@ -192,10 +189,10 @@ Perform linting on the given code. Specify output in format: <line_number> - <ty
             dtype = self.dtype,
             load_in_4bit = self.load_in_4bit,
         )
-        #FastLanguageModel.for_inference(model) # Enable native 2x faster inference
         return model, tokenizer
 
 
+# THIS NEEDS TO BE TESTED IN THE FUTURE IF NEEDED FOR NOW BASE MODEL IS USED
 class InstructLLM(LLM):
     def __init__(self, 
         model_name: str,
@@ -220,7 +217,7 @@ class InstructLLM(LLM):
         raise NotImplementedError
     
     def inference(self, input: str, text_stream: bool = True) -> str:
-        FastLanguageModel.for_inference(self.model) # Enable native 2x faster inference
+        FastLanguageModel.for_inference(self.model)
         messages = [
             {"from": "human", "value": input},
         ]
